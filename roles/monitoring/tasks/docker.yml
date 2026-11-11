@@ -1,0 +1,21 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install Docker and Python Docker SDK
+  ansible.builtin.apt:
+    name: "{{ monitoring_docker_packages }}"
+    state: present
+
+- name: Ensure Docker service is enabled and running
+  ansible.builtin.systemd:
+    name: "{{ monitoring_docker_service }}"
+    enabled: true
+    state: started
+
+- name: Verify Docker is available
+  ansible.builtin.command:
+    cmd: docker info
+  changed_when: false

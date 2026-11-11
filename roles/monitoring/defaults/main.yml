@@ -1,0 +1,37 @@
+---
+monitoring_network: monitoring
+
+monitoring_docker_packages:
+  - docker.io
+  - python3-docker
+
+monitoring_docker_service: docker
+
+monitoring_prometheus:
+  container_name: prometheus
+  image: prom/prometheus:latest
+  port: 9090
+  retention: 30d
+  volume: prometheus-data
+  config_dir: /opt/monitoring/prometheus
+
+monitoring_grafana:
+  container_name: grafana
+  image: grafana/grafana:latest
+  port: 3000
+  volume: grafana-data
+
+monitoring_prometheus_scrape_configs:
+  - job_name: prometheus
+    targets:
+      - prometheus:9090
+
+  - job_name: demo
+    targets:
+      - demo.promlabs.com:10000
+      - demo.promlabs.com:10001
+      - demo.promlabs.com:10002
+
+  - job_name: ansible
+    targets:
+      - ansible:9100

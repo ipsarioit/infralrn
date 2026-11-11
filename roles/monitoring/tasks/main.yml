@@ -1,0 +1,72 @@
+
+---
+- name: Prepare Docker environment
+  ansible.builtin.import_tasks: docker.yml
+
+- name: Ensure monitoring Docker network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_network }}"
+    state: present
+
+- name: Ensure Prometheus configuration directory exists
+  ansible.builtin.file:
+    path: "{{ monitoring_prometheus.config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure Prometheus data volume exists
+  community.docker.docker_volume:
+    name: "{{ monitoring_prometheus.volume }}"
+    state: present
+
+- name: Ensure Grafana data volume exists
+  community.docker.docker_volume:
+    name: "{{ monitoring_grafana.volume }}"
+    state: present
+
+- name: Deploy Prometheus configuration
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ monitoring_prometheus.config_dir }}/prometheus.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Prometheus
+
+- name: Start Prometheus container
+  community.docker.docker_container:
+    name: "{{ monitoring_prometheus.container_name }}"
+    image: "{{ monitoring_prometheus.image }}"
+    state: started
+    restart_policy: unless-stopped
+    pull: false
+    networks:
+      - name: "{{ monitoring_network }}"
+    ports:
+      - "{{ monitoring_prometheus.port }}:9090"
+    volumes:
+      - "{{ monitoring_prometheus.volume }}:/prometheus"
+      - "{{ monitoring_prometheus.config_dir }}/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time={{ monitoring_prometheus.retention }}"
+    etc_hosts:
+      host.docker.internal: host-gateway
+
+- name: Start Grafana container
+  community.docker.docker_container:
+    name: "{{ monitoring_grafana.container_name }}"
+    image: "{{ monitoring_grafana.image }}"
+    state: started
+    restart_policy: unless-stopped
+    pull: false
+    networks:
+      - name: "{{ monitoring_network }}"
+    ports:
+      - "{{ monitoring_grafana.port }}:3000"
+    volumes:
+      - "{{ monitoring_grafana.volume }}:/var/lib/grafana"
+

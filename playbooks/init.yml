@@ -6,6 +6,37 @@
   gather_facts: true
 
   tasks:
+    - name: Configure primary DNS
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: '^#?DNS='
+        line: 'DNS=8.8.8.8'
+        insertafter: '^\[Resolve\]'
+        create: true
+        mode: '0644'
+
+    - name: Configure fallback DNS
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: '^#?FallbackDNS='
+        line: 'FallbackDNS=8.8.4.4'
+        insertafter: '^\[Resolve\]'
+        create: true
+        mode: '0644'
+
+    - name: Enable and restart systemd-resolved
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        enabled: true
+        state: restarted
+
+    - name: Ensure resolv.conf symlink
+      ansible.builtin.file:
+        src: /run/systemd/resolve/stub-resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: true
+
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
@@ -22,6 +53,7 @@
           - htop
           - unzip
           - ca-certificates
+          - tree
         state: present
 
     - name: Display server information
@@ -31,4 +63,5 @@
           - "OS: {{ ansible_distribution }}"
           - "Version: {{ ansible_distribution_version }}"
           - "Architecture: {{ ansible_architecture }}"
-
+  roles:
+    - node_exporter
